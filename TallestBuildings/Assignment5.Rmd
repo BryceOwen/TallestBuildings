@@ -1,0 +1,107 @@
+---
+title: "Assignment5"
+author: "Bryce Owen, Abbie McKay, and Kimberly Tang"
+date: "3/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Import, Read, and Preview Data
+
+```{r}
+library("readxl")
+library("tidyverse")
+library(ggplot2)
+buildings <- read_excel('tallestbuildings.xlsx')
+buildings
+```
+
+### Rename columns and clean up data
+
+```{r}
+library(rattle) # need to install the package first
+library(magrittr) # need to install that package first
+names(buildings) %<>% normVarNames()
+buildings
+```
+
+### Group the buildings by City in descending order
+
+```{r}
+Citycounts=buildings%>%
+  group_by(city)%>%
+  summarise(number=length(city))
+arrange(Citycounts, desc(number))
+```
+
+### Group and rank means of city buildings and plot
+
+```{r}
+Citycounts=buildings%>%
+  group_by(city)%>%
+  summarise(mean_height=mean(height_ft))
+mean_buildings_sort <- arrange(Citycounts, desc(mean_height))
+
+ggplot(data = mean_buildings_sort, mapping = aes(reorder(city, mean_height), mean_height)) + geom_bar(stat = 'identity') + coord_flip() + ggtitle('Mean Height of Tallest Buildings by City') + labs(y = 'Mean of Building Heights (ft)', x = 'City')
+```
+
+### Create new columns by separating the city and country
+
+```{r}
+library(countrycode)
+buildings <- buildings %>%
+  separate(city, into = c('city', 'country'), sep = '[:punct:]')
+```
+
+### Group the buildings by Country in descending order
+
+```{r}
+# use the country code function
+buildings$country = countrycode(buildings$country, "iso2c", "country.name")
+Countrycounts=buildings%>%
+  group_by(country)%>%
+  summarise(number=length(country))
+arrange(Countrycounts, desc(number))
+```
+
+### Group and rank means of country buildings and plot
+
+```{r}
+Countrycounts=buildings%>%
+  group_by(country)%>%
+  summarise(mean_height=mean(height_ft))
+mean_buildings_sort <- arrange(Countrycounts, desc(mean_height))
+
+ggplot(data = mean_buildings_sort, mapping = aes(reorder(country, mean_height), mean_height)) + geom_bar(stat = 'identity') + coord_flip() + ggtitle('Mean Height of Tallest Buildings by Country') + labs(y = 'Mean of Building Heights (ft)', x = 'Country')
+```
+
+### Color each bar for a country based on the number of buildings from this dataset that are present in that country
+
+```{r}
+Countrycounts=buildings%>%
+  group_by(country)%>%
+  summarise(mean_height=mean(height_ft), count=length(country))
+Countrycounts
+ggplot(data = Countrycounts, mapping = aes(reorder(country, mean_height), mean_height, fill = as.factor(count))) + geom_bar(stat = 'identity') + coord_flip() + ggtitle('Mean Height of Tallest Buildings by Country') + labs(y = 'Mean of Building Heights (ft)', x = 'Country') + guides(fill=guide_legend(title="Building Count"))
+```
+
+### Split use of buildings, pivot longer, and comparing mean heights for building purposes
+
+```{r}
+buildings <- buildings %>%
+  separate(use, into = c('use1', 'use2', 'use3'), sep = ' / ')
+BuildingPurpose=buildings%>%
+  # Extra non-essential step to visualize df progression and split
+  group_by(building_name)%>%
+  # Extra non-essential step to visualize df progression and split
+  summarise(use1, use2, use3, height_ft)%>%
+  pivot_longer(cols = c('use1', 'use2', 'use3'), values_to = "use", values_drop_na = TRUE)
+
+BuildingPurpose%>%
+  group_by(use)%>%
+  summarise(mean_height=mean(height_ft))
+```
+
